@@ -1,17 +1,18 @@
 // ==UserScript==
-// @name	        Binance Futures Tweak
+// @name			Binance Futures Tweak
 // @namespace		https://github.com/phyck/Userscripts/
-// @description:0	Few tweaks for binance.com futures platform
-// @description:1	Auto hides header & creates "ctrl+K" hotkey to toggle, hides the annoying AF "Close All Positions button"
+// @description:0	Few cool tweaks for binance.com futures platform
+// @description:1	Auto hides header & creates "ctrl+K" hotkey to toggle, hides the annoying AF "Close All Positions" button
 // @description:3	Creates hotkeys to quickly filter pair on open orders & trade/order history pages.
 // @description:4	"A" for All / "B" for BTC / "E" for ETH / "L" for LTC / "X" for XMR / "D" for DOT
 // @description:5	"Shift+B" for BTCBUSD / "Shift+E" for ETHBUSD / "Shift+L" for LTCBUSD
-// @version			1.6
+// @version			0.8
+// @author			phyck
 // @license			GNU AGPLv3
 // @icon			https://bin.bnbstatic.com/static/images/common/favicon.ico
 // @homepage		https://github.com/phyck/Userscripts/
-// @updateURL		https://github.com/phyck/Userscripts/BinanceFuturesTweak.user.js
-// @downloadURL		https://github.com/phyck/Userscripts/BinanceFuturesTweak.user.js
+// @updateURL		https://github.com/phyck/Userscripts/raw/main/BinanceFuturesTweak.user.js
+// @downloadURL		https://github.com/phyck/Userscripts/raw/main/BinanceFuturesTweak.user.js
 // @match			https://www.binance.com/en/my/orders/futures/*
 // @match			https://www.binance.com/en/futures/*
 // @match			https://www.binance.com/en/delivery/*
@@ -19,16 +20,31 @@
 // @require			https://code.jquery.com/jquery-3.6.0.min.js
 // ==/UserScript==
 
-main();
-
-function main() {
+(function () {
+	'use strict';
+	var headerHidden = 0;
 	window.addEventListener('load', function() {
 		console.log("DOMContentLoaded!");
 		if (window.location.href.indexOf("binance.com/en/futures/" > -1) || window.location.href.indexOf("binance.com/en/delivery/") > -1) {
-			setMaxHeight();
+			//setMaxHeight();
 			// Hide STUPID "Close All Positions" button!!!
 			$("button[class=' css-u3kl37']").toggle();
 		}
+
+		// Set date range to last 2 days
+		if (window.location.href.indexOf("history") > -1) {
+			const yesterday = new Date();
+			yesterday.setDate(yesterday.getDate() - 1);
+			console.log("yesterday: " + yesterday); // "Thu Aug 12 2022"
+			var startDate = formatDate(yesterday).toString();
+			console.log("startDate: " + startDate); // 2022-08-12
+			var endDate = $(".rc-picker-input:eq(1) :input[readonly='readonly']").val();
+			console.log("EndDate: " + endDate);
+			$(".rc-picker-input-active").click();
+			$('td[title="'+startDate+'"]').click();
+			$('td[title="'+endDate+'"]').click();
+		}
+
 		window.addEventListener("keydown", function(ev, ele) {
 			// Toggle header with hotkey Ctrl+K
 			if (ev.ctrlKey && ev.code === 'KeyK') {
@@ -36,9 +52,11 @@ function main() {
 				toggleHeader();
 			}
 		});
+
 		setTimeout(() => {
 			toggleHeader();
-		}, 1000);
+		}, 800);
+
 	// activate futures orders page hotkeys to filter major crypto symbols
 	if (window.location.href.indexOf("/my/orders/futures/") > -1) {//=='https://www.binance.com/en/my/orders/futures/openorder')
 		window.addEventListener("keydown", function(ev, ele) {
@@ -46,76 +64,90 @@ function main() {
 				// Clear filter
 				case "A":
 					console.log("All");
-					document.querySelector("#ALL").click();
+					$("#ALL .css-1pysja1").click();
 					break;
 				// BTCUSDT
 				case "B":
 					console.log("BTCUSDT");
-					document.querySelector("#BTCUSDT").click();
+					$("#BTCUSDT").click();
 					break;
 				// ETHUSDT
 				case "E":
 					console.log("ETHUSDT");
-					document.querySelector("#ETHUSDT").click();
+					$("#ETHUSDT").click();
 					break;
 				// XMRUSDT
 				case "X":
 					console.log("XMRUSDT");
-					document.querySelector("#XMRUSDT").click();
+					$("#XMRUSDT").click();
 					break;
 				// LTCUSDT
 				case "L":
 					console.log("LTCUSDT");
-					document.querySelector("#LTCUSDT").click();
+					$("#LTCUSDT").click();
 					break;
 				// DOTUSDT
 				case "D":
 					console.log("DOTUSDT");
-					document.querySelector("#DOTUSDT").click();
+					$("#DOTUSDT").click();
 					break;
 			};
 			// BTCBUSD
 			if (ev.shiftKey && ev.code === 'KeyB') {
 				console.log("BTCBUSD");
 				console.log(ev.key.toUpperCase());
-				document.querySelector("#BTCBUSD").click();
+				$("#BTCBUSD").click();
 			}
 			// ETHBUSD
 			if (ev.shiftKey && ev.code === 'KeyE') {
 				console.log("ETHBUSD");
 				console.log(ev.key.toUpperCase());
-				document.querySelector("#ETHBUSD").click();
+				$("#ETHBUSD").click();
 			}
 			// LTCBUSD
 			if (ev.shiftKey && ev.code === 'KeyL') {
 				console.log("LTCBUSD");
 				console.log(ev.key.toUpperCase());
-				document.querySelector("#LTCBUSD").click();
+				$("#LTCBUSD").click();
 			}
-			// Click search button to filter on futures order & trade history pages.
-			if (window.location.href.indexOf("history") > -1) {
-				document.querySelector(".search-button").click();
-			}
+		// Click search button to filter on futures order & trade history pages.
+		if (window.location.href.indexOf("history") > -1) {
+			$(".search-button").click();
+		}
 		})};
 	console.log("Done!");
 	});
-}
 
-function setMaxHeight() {
-    console.log("doc.height: " + $(document).height());
-    console.log("win.height: " + $(window).height());
-    $(".css-1efks0a").css("maxHeight", ( $(window).height() * 1.23 | 0 ) + "px");
-}
-
-// Toggle navbar visibility
-function toggleHeader() {
-	// div[name='header'] element on futures trading page
-	if ($("div[name='header']").length) {
-		$("div[name='header']").toggle();
-	} else if ($("header").length) {
-		// Simple header element on orders & history pages
-		$("header").toggle();
-	} else {
-		console.log("No header found! toggleHeader() failed!");
+	// Toggle navbar visibility
+	function toggleHeader() {
+		// div[name='header'] element on futures trading page
+		if ($("div[name='header']").length) {
+			if(headerHidden) {
+				$("div[name='header']").toggle();
+				$(".css-1efks0a").css("height","100%");
+				headerHidden = 0;
+			} else {
+				$("div[name='header']").toggle();
+				$(".css-1efks0a").height($(".react-grid-layout").height()+$(".css-ugq4b8").height());
+				headerHidden = 1;
+			}
+		} else if ($("header").length) {
+			// Simple header element on orders & history pages
+			$("header").toggle();
+		} else {
+			console.log("No header found! toggleHeader() failed!");
+		}
 	}
-}
+
+	function padTo2Digits(num) {
+		return num.toString().padStart(2, '0');
+	}
+
+	function formatDate(date) {
+		return [
+		date.getFullYear(),
+		padTo2Digits(date.getMonth() + 1),
+		padTo2Digits(date.getDate()),
+		].join('-');
+	}
+})();
