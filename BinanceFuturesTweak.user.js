@@ -6,7 +6,7 @@
 // @description:3	Creates hotkeys to quickly filter pair on open orders & trade/order history pages.
 // @description:4	"A" for All / "B" for BTC / "E" for ETH / "L" for LTC / "X" for XMR / "D" for DOT
 // @description:5	"Shift+B" for BTCBUSD / "Shift+E" for ETHBUSD / "Shift+L" for LTCBUSD
-// @version			0.9
+// @version			1.0
 // @author			phyck
 // @license			GNU AGPLv3
 // @icon			https://bin.bnbstatic.com/static/images/common/favicon.ico
@@ -18,20 +18,22 @@
 // @match			https://www.binance.com/en/delivery/*
 // @grant			none
 // @require			https://code.jquery.com/jquery-3.6.0.min.js
-// @run-at			document-end
 // ==/UserScript==
 
-const today = new Date();
-today.setDate(today.getDate());
-const yesterday = new Date();
-yesterday.setDate(yesterday.getDate() - 1);
+'use strict';
 var headerHidden = 0;
-
-main();
+//$(window).ready(function($) {
+//window.addEventListener('load', function() {
+$(window).on("load", function() {
+	console.log("$(window) loaded!");
+	main();
+});
 
 function main() {
-	window.addEventListener('load', function() {
-		console.log("DOMContentLoaded!");
+	//$("#__APP").on("load", function() {
+	$("#__APP").ready(function() {
+		console.log('$("#__APP").ready!');
+		toggleHeader();
 		if (window.location.href.indexOf("binance.com/en/futures/" > -1) || window.location.href.indexOf("binance.com/en/delivery/") > -1) {
 			//setMaxHeight();
 			// Hide STUPID "Close All Positions" button!!!
@@ -46,9 +48,30 @@ function main() {
 			}
 		});
 
-		setTimeout(() => {
-			toggleHeader();
-		}, 900);
+		if (window.location.href.indexOf("history") > -1) {
+			$(".rc-picker-input-active").ready(function() {
+			//$(".list-content").on("load", function() {
+				console.log(".rc-picker-input-active ready!")
+				// Set date range to last 2 days on history pages
+				const today = new Date();
+				today.setDate(today.getDate());
+				const yesterday = new Date();
+				yesterday.setDate(yesterday.getDate() - 1);
+				var startDate = formatDate(yesterday).toString();
+				console.log("startDate: " + startDate); // 2022-08-12
+				var endDate = formatDate(today).toString();
+				console.log("EndDate: " + endDate);
+				if($(".rc-picker-input-active").length==0) {
+					window.alert('$(".rc-picker-input-active").length==0');
+				}
+				else {
+					$(".rc-picker-input-active").click();
+					$('td[title="'+startDate+'"]').click();
+					$('td[title="'+endDate+'"]').click();
+					$(".search-button").click();
+				}
+			});
+		}
 
 		// activate futures orders page hotkeys to filter major crypto symbols
 		if (window.location.href.indexOf("/my/orders/futures/") > -1) {//=='https://www.binance.com/en/my/orders/futures/openorder')
@@ -109,20 +132,6 @@ function main() {
 				}
 			});
 		}
-		setTimeout(() => {
-			// Set date range to last 2 days on history pages
-			if (window.location.href.indexOf("history") > -1) {
-				console.log("yesterday: " + yesterday); // "Thu Aug 12 2022"
-				var startDate = formatDate(yesterday).toString();
-				console.log("startDate: " + startDate); // 2022-08-12
-				var endDate = formatDate(today).toString();
-				console.log("EndDate: " + endDate);
-				$(".rc-picker-input-active").click();
-				$('td[title="'+startDate+'"]').click();
-				$('td[title="'+endDate+'"]').click();
-				$(".search-button").click();
-			}
-		}, 2000);
 		console.log("Done!");
 	});
 }
