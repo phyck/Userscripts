@@ -6,7 +6,8 @@
 // @description:3	Creates hotkeys to quickly filter pair on open orders & trade/order history pages.
 // @description:4	"A" for All / "B" for BTC / "E" for ETH / "L" for LTC / "X" for XMR / "D" for DOT
 // @description:5	"Shift+B" for BTCBUSD / "Shift+E" for ETHBUSD / "Shift+L" for LTCBUSD
-// @version			1.0
+// @description:6	Auto refresh on open orders & trade/order history pages. Toggle with "Shift+R"
+// @version			1.2
 // @author			phyck
 // @license			GNU AGPLv3
 // @icon			https://bin.bnbstatic.com/static/images/common/favicon.ico
@@ -21,21 +22,23 @@
 // ==/UserScript==
 
 'use strict';
+var autoRefreshDelay = 60;
+var dateRange = 2;
 var headerHidden = 0;
-//$(window).ready(function($) {
-//window.addEventListener('load', function() {
-$(window).on("load", function() {
-	console.log("$(window) loaded!");
-	main();
+var autoRefresh = 0;
+var autoRefreshCountdownDiv;
+var autoRefreshTimer;
+
+window.addEventListener("load", function () {
+	console.log("BFT:\tWindow loaded!");
+	setTimeout(main, 2500);
 });
 
 function main() {
-	//$("#__APP").on("load", function() {
 	$("#__APP").ready(function() {
-		console.log('$("#__APP").ready!');
+		console.log("BFT:\t#__APP ready!");
 		toggleHeader();
 		if (window.location.href.indexOf("binance.com/en/futures/" > -1) || window.location.href.indexOf("binance.com/en/delivery/") > -1) {
-			//setMaxHeight();
 			// Hide STUPID "Close All Positions" button!!!
 			$("button[class=' css-u3kl37']").toggle();
 		}
@@ -43,103 +46,92 @@ function main() {
 		window.addEventListener("keydown", function(ev, ele) {
 			// Toggle header with hotkey Ctrl+K
 			if (ev.ctrlKey && ev.code === 'KeyK') {
-				console.log("Toggling header!");
 				toggleHeader();
 			}
 		});
 
 		if (window.location.href.indexOf("history") > -1) {
-			$(".rc-picker-input-active").ready(function() {
-			//$(".list-content").on("load", function() {
-				console.log(".rc-picker-input-active ready!")
-				// Set date range to last 2 days on history pages
-				const today = new Date();
-				today.setDate(today.getDate());
-				const yesterday = new Date();
-				yesterday.setDate(yesterday.getDate() - 1);
-				var startDate = formatDate(yesterday).toString();
-				console.log("startDate: " + startDate); // 2022-08-12
-				var endDate = formatDate(today).toString();
-				console.log("EndDate: " + endDate);
-				if($(".rc-picker-input-active").length==0) {
-					window.alert('$(".rc-picker-input-active").length==0');
-				}
-				else {
-					$(".rc-picker-input-active").click();
-					$('td[title="'+startDate+'"]').click();
-					$('td[title="'+endDate+'"]').click();
-					$(".search-button").click();
-				}
-			});
+			setDateRange();
 		}
 
 		// activate futures orders page hotkeys to filter major crypto symbols
 		if (window.location.href.indexOf("/my/orders/futures/") > -1) {//=='https://www.binance.com/en/my/orders/futures/openorder')
+			injectCounterDiv();
+			//startAutoRefresh();
 			window.addEventListener("keydown", function(ev, ele) {
 				switch (ev.key.toUpperCase()) {
-						// Clear filter
+					// Clear filter
 					case "A":
-						console.log("All");
+						console.log("BFT:\tAll");
 						$("#ALL .css-1pysja1").click();
+						isHistory();
 						break;
-						// BTCUSDT
+					// BTCUSDT
 					case "B":
-						console.log("BTCUSDT");
+						console.log("BFT:\tBTCUSDT");
 						$("#BTCUSDT").click();
+						isHistory();
 						break;
-						// ETHUSDT
+					// ETHUSDT
 					case "E":
-						console.log("ETHUSDT");
+						console.log("BFT:\tETHUSDT");
 						$("#ETHUSDT").click();
+						isHistory();
 						break;
-						// XMRUSDT
+					// XMRUSDT
 					case "X":
-						console.log("XMRUSDT");
+						console.log("BFT:\tXMRUSDT");
 						$("#XMRUSDT").click();
+						isHistory();
 						break;
-						// LTCUSDT
+					// LTCUSDT
 					case "L":
-						console.log("LTCUSDT");
+						console.log("BFT:\tLTCUSDT");
 						$("#LTCUSDT").click();
+						isHistory();
 						break;
-						// DOTUSDT
+					// DOTUSDT
 					case "D":
-						console.log("DOTUSDT");
+						console.log("BFT:\tDOTUSDT");
 						$("#DOTUSDT").click();
+						isHistory();
 						break;
 				};
 				// BTCBUSD
 				if (ev.shiftKey && ev.code === 'KeyB') {
-					console.log("BTCBUSD");
+					console.log("BFT:\tBTCBUSD");
 					console.log(ev.key.toUpperCase());
 					$("#BTCBUSD").click();
+					isHistory();
 				}
 				// ETHBUSD
 				if (ev.shiftKey && ev.code === 'KeyE') {
-					console.log("ETHBUSD");
+					console.log("BFT:\tETHBUSD");
 					console.log(ev.key.toUpperCase());
 					$("#ETHBUSD").click();
+					isHistory();
 				}
 				// LTCBUSD
 				if (ev.shiftKey && ev.code === 'KeyL') {
-					console.log("LTCBUSD");
+					console.log("BFT:\tLTCBUSD");
 					console.log(ev.key.toUpperCase());
 					$("#LTCBUSD").click();
+					isHistory();
 				}
-				// Click search button to filter on futures order & trade history pages.
-				if (window.location.href.indexOf("history") > -1) {
-					$(".search-button").click();
+				// Toggle auto refresh with "Shift+R"
+				if (ev.shiftKey && ev.code === 'KeyR') {
+					toggleAutoRefresh();
 				}
 			});
 		}
-		console.log("Done!");
+		console.log("BFT:\tDone!");
 	});
 }
 
 // Toggle navbar visibility
 function toggleHeader() {
-	// div[name='header'] element on futures trading page
-	if ($("div[name='header']").length) {
+	console.log("BFT:\tToggling header!");
+	if ($("div[name='header']").length) {	// div[name='header'] element on futures trading page
 		if(headerHidden) {
 			$("div[name='header']").toggle();
 			$(".css-1efks0a").css("height","100%");
@@ -149,11 +141,117 @@ function toggleHeader() {
 			$(".css-1efks0a").height($(".react-grid-layout").height()+$(".css-ugq4b8").height());
 			headerHidden = 1;
 		}
-	} else if ($("header").length) {
-		// Simple header element on orders & history pages
+	} else if ($("header").length) {	// Simple header element on orders & history pages
 		$("header").toggle();
 	} else {
-		console.log("No header found! toggleHeader() failed!");
+		console.log("\nBFT:\tNo header found! toggleHeader() failed!\n")
+		console.log("Retrying toggleHeader!");
+		setTimeout(toggleHeader, 1000);
+	}
+}
+
+// Set date range on history page
+function setDateRange() {
+	$(".rc-picker-input-active").ready(function() {
+		console.log("BFT:\t.rc-picker-input-active ready!");
+		// Set date range to prev x days specified by dateRange.
+		var startDate = new Date();
+		startDate.setDate(startDate.getDate() - dateRange + 1);
+		startDate = formatDate(startDate).toString();
+		//console.log("BFT:\tstartDate: " + startDate); // 2022-08-12
+		var endDate = new Date();
+		endDate.setDate(endDate.getDate());
+		endDate = formatDate(endDate).toString();
+		//console.log("BFT:\tendDate: " + endDate);
+		if ($(".rc-picker-input-active").length) {
+			$(".rc-picker-input-active").click();
+			$('td[title="' + startDate + '"]').click();
+			$('td[title="' + endDate + '"]').click();
+			isHistory();
+			console.log("BFT:\tDate range set!");
+		} else {
+			console.log("\nBFT:\t.rc-picker-input-active not found!");
+			console.log("BFT:\tFailed to set date range!\n");
+			console.log("Retrying setDateRange()!");
+			setTimeout(setDateRange, 2000);
+		}
+	});
+}
+
+// Click search button to filter on futures order & trade history pages.
+function isHistory() {
+	if (window.location.href.indexOf("history") > -1) {
+		$(".search-button").click();
+	}
+}
+
+// Create a div to display auto refresh countdown.
+function injectCounterDiv() {
+	$(".title-wrap").ready(function() {
+		console.log("BFT:\t.title-wrap ready!");
+		$(".title-wrap").clone().prependTo(".page-top");
+		$(".title-wrap").eq(1).find(".css-10nf7hq").remove();
+		$(".title-wrap").eq(1).find(".css-1escwmk").remove();
+		$(".css-18kqmhp").eq(1).addClass("counter");
+		autoRefreshCountdownDiv = $(".counter");
+		if (autoRefreshCountdownDiv.length) { // Simple header element on orders & history pages
+			console.log("BFT:\tautoRefreshCountdownDiv created!");
+			autoRefreshCountdownDiv.html("Auto refresh off!");
+			toggleAutoRefresh();
+		} else {
+			console.log("\nBFT:\tFailed to create autoRefreshCountdownDiv!\n");
+			console.log("Retrying injectCounterDiv()!\n");
+			setTimeout(injectCounterDiv, 1500);
+		}
+	});
+}
+
+// Toggle automatic refresh
+function toggleAutoRefresh() {
+	console.log("BFT:\tToggle auto refresh");
+	if(autoRefresh) {
+		stopAutoRefresh();
+	} else {
+		startAutoRefresh();
+	}
+}
+
+function stopAutoRefresh() {
+	autoRefresh = 0;
+	clearInterval(autoRefreshTimer);
+	autoRefreshCountdownDiv.html("Auto refresh off!");
+}
+
+function startAutoRefresh() {
+	autoRefresh = 1;
+	autoRefreshDelay = 60;
+	autoRefreshCountdownDiv.html("Auto refresh on!");
+	autoRefreshTimer = setInterval(autoRefreshCountdown, 1000);
+}
+
+function refresh() {
+	console.log("BFT:\tAuto refreshing!");
+	if (window.location.href.indexOf("history") > -1) {			// Click search-button on trade/order history pages
+		$(".search-button").click();
+	}
+	else {
+		$(".css-stc8a0").find(".bnb-active-option").click();	// Click currently selected symbol on on order pages
+	}
+	clearInterval(autoRefreshTimer);
+	console.clear();
+	startAutoRefresh();
+}
+
+function autoRefreshCountdown() {
+	if (autoRefreshDelay == 0) {
+		refresh();
+	} else {
+		var autoRefreshMsg = "Auto refresh in " + autoRefreshDelay + " seconds!";
+		autoRefreshCountdownDiv.html(autoRefreshMsg);
+		if(autoRefreshDelay % 10 == 0) {
+			console.log("BFT:\t"+autoRefreshMsg);
+		}
+		autoRefreshDelay--;
 	}
 }
 
