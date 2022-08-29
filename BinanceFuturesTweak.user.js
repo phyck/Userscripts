@@ -2,12 +2,14 @@
 // @name			Binance Futures Tweak
 // @namespace		https://github.com/phyck/Userscripts/
 // @description:0	Few cool tweaks for binance.com futures platform
-// @description:1	Auto hides header & creates "ctrl+K" hotkey to toggle, hides the annoying AF "Close All Positions" button
-// @description:3	Creates hotkeys to quickly filter pair on open orders & trade/order history pages.
-// @description:4	"A" for All / "B" for BTC / "E" for ETH / "L" for LTC / "X" for XMR / "D" for DOT
-// @description:5	"Shift+B" for BTCBUSD / "Shift+E" for ETHBUSD / "Shift+L" for LTCBUSD
-// @description:6	Auto refresh on open orders & trade/order history pages. Toggle with "Shift+R"
-// @version			1.2
+// @description:1	Auto hides header & creates "ctrl+K" hotkey to toggle, hides the annoying AF "Close All Positions" button (we've all pressed by accident to often).
+// @description:2	Creates hotkeys to quickly filter pair on open orders & trade/order history pages.
+// @description:3	"A" for All / "B" for BTC / "E" for ETH / "L" for LTC / "X" for XMR / "D" for DOT.
+// @description:4	"Shift+B" for BTCBUSD / "Shift+E" for ETHBUSD / "Shift+L" for LTCBUSD.
+// @description:5	Automatically sets date range to last 2 days (incl. today) on the trade/order history pages (on load)! (for a different range adjust "dateRange" parameter).
+// @description:6	Auto refresh feature for the open orders & trade/order history pages (that remembers the selected filter) with a clean countdown to next refresh (every 60s).
+// @description:7	Toggle Auto refresh with "Shift+R" (starts automatically on load)
+// @version			1.3
 // @author			phyck
 // @license			GNU AGPLv3
 // @icon			https://bin.bnbstatic.com/static/images/common/favicon.ico
@@ -17,11 +19,10 @@
 // @match			https://www.binance.com/en/my/orders/futures/*
 // @match			https://www.binance.com/en/futures/*
 // @match			https://www.binance.com/en/delivery/*
-// @grant			none
+// @grant			GM_addStyle
 // @require			https://code.jquery.com/jquery-3.6.0.min.js
 // ==/UserScript==
 
-'use strict';
 var autoRefreshDelay = 60;
 var dateRange = 2;
 var headerHidden = 0;
@@ -30,21 +31,23 @@ var autoRefreshCountdownDiv;
 var autoRefreshTimer;
 
 window.addEventListener("load", function () {
+	'use strict';
 	console.log("BFT:\tWindow loaded!");
-	setTimeout(main, 2500);
+	setTimeout(main, 2000);
 });
 
 function main() {
 	$("#__APP").ready(function() {
 		console.log("BFT:\t#__APP ready!");
+		// Auto hide header/navbar on load!
 		toggleHeader();
 		if (window.location.href.indexOf("binance.com/en/futures/" > -1) || window.location.href.indexOf("binance.com/en/delivery/") > -1) {
 			// Hide STUPID "Close All Positions" button!!!
 			$("button[class=' css-u3kl37']").toggle();
 		}
 
-		window.addEventListener("keydown", function(ev, ele) {
-			// Toggle header with hotkey Ctrl+K
+		// Toggle header/navbar visibility with hotkey Ctrl+K
+		window.addEventListener("keydown", function(ev) {
 			if (ev.ctrlKey && ev.code === 'KeyK') {
 				toggleHeader();
 			}
@@ -54,13 +57,13 @@ function main() {
 			setDateRange();
 		}
 
-		// activate futures orders page hotkeys to filter major crypto symbols
+		// Activate futures orders page hotkeys to quickly filter major crypto symbols!
 		if (window.location.href.indexOf("/my/orders/futures/") > -1) {//=='https://www.binance.com/en/my/orders/futures/openorder')
 			injectCounterDiv();
-			//startAutoRefresh();
-			window.addEventListener("keydown", function(ev, ele) {
+			GM_addStyle(".counter { color: #fcd535!important; }");
+			window.addEventListener("keydown", function(ev) {
 				switch (ev.key.toUpperCase()) {
-					// Clear filter
+					// Clear symbol filter (set to all)
 					case "A":
 						console.log("BFT:\tAll");
 						$("#ALL .css-1pysja1").click();
@@ -96,7 +99,7 @@ function main() {
 						$("#DOTUSDT").click();
 						isHistory();
 						break;
-				};
+				}
 				// BTCBUSD
 				if (ev.shiftKey && ev.code === 'KeyB') {
 					console.log("BFT:\tBTCBUSD");
@@ -118,7 +121,7 @@ function main() {
 					$("#LTCBUSD").click();
 					isHistory();
 				}
-				// Toggle auto refresh with "Shift+R"
+				// Toggle Auto Refresh with "Shift+R"
 				if (ev.shiftKey && ev.code === 'KeyR') {
 					toggleAutoRefresh();
 				}
@@ -128,7 +131,7 @@ function main() {
 	});
 }
 
-// Toggle navbar visibility
+// Toggle header/navbar visibility!
 function toggleHeader() {
 	console.log("BFT:\tToggling header!");
 	if ($("div[name='header']").length) {	// div[name='header'] element on futures trading page
@@ -144,13 +147,13 @@ function toggleHeader() {
 	} else if ($("header").length) {	// Simple header element on orders & history pages
 		$("header").toggle();
 	} else {
-		console.log("\nBFT:\tNo header found! toggleHeader() failed!\n")
+		console.log("\nBFT:\tNo header found! toggleHeader() failed!\n");
 		console.log("Retrying toggleHeader!");
 		setTimeout(toggleHeader, 1000);
 	}
 }
 
-// Set date range on history page
+// Sets date range on (load) trade/order history pages!
 function setDateRange() {
 	$(".rc-picker-input-active").ready(function() {
 		console.log("BFT:\t.rc-picker-input-active ready!");
